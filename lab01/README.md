@@ -4,6 +4,20 @@ Autor: Ivan Jeržabek 0036526653
 
 ---
 
+### Opis sustava
+
+Sav sigurnosni protokol odvija se u razredu **SecureStoreIO**. Svi podaci pohranjeni su unutar jedne binarne datoteke *(passwordManager.bin)*.
+
+Prilikom pohrane podataka koristimo sljedeći postupak:
+
+1) pomoću javinog *SecureRandom* sigurnog kriptografskog generatora nasumičnih brojeva stvaramo 16-byteni inicijalizacijski vektor i salt *(ovo se dešava svaki puta kada pohranjujemo datoteku - **čime osiguravamo sigurnosne zahtjeve**)*
+2) Pomoću nekoličine pomoćnih razreda generiramo AES 256 bitni ključ algoritmom PBKDF2 sa HMAC SHA-256 na temelju master zaporke te salt-a *(dakle ovdje koristimo autentificiranu šifru)*
+3) Nakon toga pomoću AES ključa te inicijalizacijskog vektora enkriptiramo 32 okteta "preambule" te sami tekstualni sadržaj. Preambula je nasumično generirano smeće koje dolazi prije samog tekstualnog sadržaja koje služi tome da nikad ne bismo enkriptirali prazan sadržaj.
+4) Konačno pohranimo u prvih 16 okteta datoteke inicijalizacijski vektor, u idućih 16 okteta pohranjujemo salt, te nakon toga slijedi enkriptirani sadržaj.
+
+Prilikom čitanja pohranjenih podataka dešava se esencijalno isti postupak ali u suprotnom redoslijedu.
+
+
 ### Upute za pokretanje
 
 Na računalu je potrebno instalirati prikladnu verziju jave (11) te Maven. Podrazumijeva se da sve
