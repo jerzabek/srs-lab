@@ -1,8 +1,8 @@
 package hr.fer.srs.lab02;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,11 +30,19 @@ public class UserDatabase {
     return users;
   }
 
-  public Collection<User> getUsers() {
-    return users.values();
+  public List<User> getUsers() {
+    return List.copyOf(users.values());
+  }
+
+  public User getUser(String username) {
+    return users.get(username);
   }
 
   public void addUser(User user) {
     users.put(user.getUsername(), user);
+  }
+
+  public void removeUser(String username) {
+    users.remove(username);
   }
 }

@@ -7,25 +7,30 @@ import java.io.Console;
 /**
  * @author Ivan Jeržabek - ivan.jerzabek@fer.hr
  */
-public class AddUserOperation implements UserManagementOperation {
-
-  private String username;
+public class AddUserOperation extends UserManagementOperation {
 
   public AddUserOperation(String username) {
-    this.username = username;
+    super(username, false);
   }
 
   @Override
   public void execute() {
+    if (UserManagement.userManagementInstance.getDatabase().getUser(username) != null) {
+      System.out.println("User already exists.");
+      return;
+    }
+
     Console console = System.console();
 
-    char[] pass = console.readPassword("Password:");
-    char[] passConfirmation = console.readPassword("Repeat password:");
+    char[] pass = console.readPassword("Password: ");
+    char[] passConfirmation = console.readPassword("Repeat password: ");
 
     if (!new String(pass).equals(new String(passConfirmation))) {
       throw new IllegalStateException("User add failed. Password mismatch.");
     }
 
-    UserManagement.getDatabase().addUser(new User(username, pass));
+    UserManagement.userManagementInstance.getDatabase().addUser(new User(username, pass));
+
+    System.out.println("Successfully added user.");
   }
 }

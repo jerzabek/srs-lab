@@ -32,18 +32,35 @@ public class SecureStore {
   private static final String storeFile = "passwords.bin";
 
   private final Path pathToStore;
+  private byte[] salt = new byte[SALT_LENGTH];
 
   public SecureStore() {
     pathToStore = Paths.get(storeFile);
-  }
 
-  public static byte[] getPasswordHash(char[] password) {
-    try {
-      SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+    if (Files.exists(pathToStore)) {
+      salt = readSalt();
+    } else {
       SecureRandom cryptographicRandomizer = new SecureRandom();
 
-      byte[] salt = new byte[SALT_LENGTH];
       cryptographicRandomizer.nextBytes(salt);
+    }
+
+  }
+
+  private byte[] readSalt() {
+    try {
+      BufferedInputStream bis = new BufferedInputStream(Files.newInputStream(pathToStore));
+      DataInputStream dis = new DataInputStream(bis);
+
+      return dis.readNBytes(SALT_LENGTH);
+    } catch (Exception e) {
+      throw new RuntimeException("Could not read store.");
+    }
+  }
+
+  public byte[] getPasswordHash(char[] password) {
+    try {
+      SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
 
       KeySpec spec = new PBEKeySpec(password, salt, ITERATION_COUNT, KEY_LENGTH);
       return factory.generateSecret(spec).getEncoded();
@@ -55,8 +72,18 @@ public class SecureStore {
   public List<User> readAll() throws IOException {
     List<User> users = new ArrayList<>();
 
+    try {
+      Files.createFile(pathToStore);
+
+      return users;
+    } catch (Exception e) {
+      // Ignored
+    }
+
     BufferedInputStream bis = new BufferedInputStream(Files.newInputStream(pathToStore));
     DataInputStream dis = new DataInputStream(bis);
+
+    dis.skipBytes(SALT_LENGTH);
 
     while (true) {
       try {
@@ -64,7 +91,11 @@ public class SecureStore {
         long numOfBytes = dis.readLong();
         byte[] passwordHash = dis.readNBytes(Math.toIntExact(numOfBytes));
 
-        users.add(new User(username, passwordHash));
+        User temp = new User(username, passwordHash);
+
+        temp.setForceResetPassword(dis.readBoolean());
+
+        users.add(temp);
       } catch (EOFException e) {
         break;
       }
@@ -79,6 +110,10 @@ public class SecureStore {
     BufferedOutputStream bos = new BufferedOutputStream(Files.newOutputStream(pathToStore));
     DataOutputStream dos = new DataOutputStream(bos);
 
+    for (byte b : salt) {
+      dos.writeByte(b);
+    }
+
     for (User user : users) {
       dos.writeUTF(user.getUsername());
       dos.writeLong(user.getPasswordHash().length);
@@ -86,6 +121,8 @@ public class SecureStore {
       for (byte b : user.getPasswordHash()) {
         dos.writeByte(b);
       }
+
+      dos.writeBoolean(user.isForceResetPassword());
     }
 
     dos.flush();
